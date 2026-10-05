@@ -3,7 +3,6 @@ package com.pvpactivity;
 import com.pvpactivity.model.WorldActivity;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import javax.swing.Box;
@@ -17,6 +16,8 @@ import net.runelite.client.ui.PluginPanel;
 
 public class PvpActivityPanel extends PluginPanel
 {
+    private static final String[] BRACKET_ORDER = {"3-50", "51-70", "71-90", "91-110", "111-126", "unknown"};
+
     private final JLabel worldValue = valueLabel();
     private final JLabel combatValue = valueLabel();
     private final JLabel wildernessValue = valueLabel();
@@ -52,7 +53,7 @@ public class PvpActivityPanel extends PluginPanel
         content.add(statusRow("Server", serverValue));
 
         add(content, BorderLayout.NORTH);
-        updateActivity(Collections.emptyList());
+        showServiceDisabled();
         updateLocalStatus(0, 0, false, false, false);
     }
 
@@ -64,8 +65,13 @@ public class PvpActivityPanel extends PluginPanel
             combatValue.setText(combat > 0 ? Integer.toString(combat) : "-");
             wildernessValue.setText(inWilderness ? "YES" : "NO");
             sharingValue.setText(sharing ? "ON" : "OFF");
-            serverValue.setText(connected ? "CONNECTED" : "OFFLINE");
+            serverValue.setText(!sharing ? "DISABLED" : (connected ? "CONNECTED" : "OFFLINE"));
         });
+    }
+
+    public void showServiceDisabled()
+    {
+        setActivityMessage("Enable the service in plugin settings to share and view activity.");
     }
 
     public void updateActivity(List<WorldActivity> worlds)
@@ -88,11 +94,14 @@ public class PvpActivityPanel extends PluginPanel
                     header.setAlignmentX(LEFT_ALIGNMENT);
                     activityContainer.add(header);
 
-                    for (Map.Entry<String, Integer> entry : world.getBrackets().entrySet())
+                    Map<String, Integer> brackets = world.getBrackets();
+                    for (String bracketName : BRACKET_ORDER)
                     {
-                        if (entry.getValue() != null && entry.getValue() > 0)
+                        Integer count = brackets.get(bracketName);
+                        if (count != null && count > 0)
                         {
-                            JLabel bracket = new JLabel("   Lv " + entry.getKey() + ": " + entry.getValue());
+                            String displayName = "unknown".equals(bracketName) ? "Unknown" : "Lv " + bracketName;
+                            JLabel bracket = new JLabel("   " + displayName + ": " + count);
                             bracket.setAlignmentX(LEFT_ALIGNMENT);
                             activityContainer.add(bracket);
                         }
@@ -101,6 +110,19 @@ public class PvpActivityPanel extends PluginPanel
                 }
             }
 
+            activityContainer.revalidate();
+            activityContainer.repaint();
+        });
+    }
+
+    private void setActivityMessage(String message)
+    {
+        SwingUtilities.invokeLater(() ->
+        {
+            activityContainer.removeAll();
+            JLabel label = new JLabel("<html><body style='width:200px'>" + message + "</body></html>");
+            label.setAlignmentX(LEFT_ALIGNMENT);
+            activityContainer.add(label);
             activityContainer.revalidate();
             activityContainer.repaint();
         });
