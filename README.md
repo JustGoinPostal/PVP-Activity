@@ -38,12 +38,23 @@ When enabled, the user's IP address is necessarily visible to the server while m
 
 Sessions expire automatically after 45 seconds without a heartbeat. Closing RuneLite, logging out, or disabling sharing also attempts to remove the session immediately.
 
+See [PRIVACY.md](PRIVACY.md) for the full data-handling description.
+
+## RuneLite review
+
+This implementation is intentionally being presented transparently for a RuneLite ruling before a formal Plugin Hub submission. The proposed ruling request, including the exact behavior and exclusions, is available at [docs/RUNELITE_RULING_REQUEST.md](docs/RUNELITE_RULING_REQUEST.md).
+
 ## Project layout
 
 ```text
 .
 ├── build.gradle
 ├── runelite-plugin.properties
+├── PRIVACY.md
+├── LICENSE
+├── docs/
+│   ├── architecture.md
+│   └── RUNELITE_RULING_REQUEST.md
 ├── src/
 │   ├── main/java/com/pvpactivity/
 │   │   ├── PvpActivityPlugin.java
