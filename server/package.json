@@ -1,0 +1,12 @@
+{
+  "name": "pvp-activity-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Anonymous aggregation backend for the PVP Activity RuneLite plugin",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
