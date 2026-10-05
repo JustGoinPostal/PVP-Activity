@@ -2,7 +2,7 @@ package com.pvpactivity;
 
 import javax.inject.Inject;
 import net.runelite.api.Client;
-import net.runelite.api.Varbits;
+import net.runelite.api.gameval.VarbitID;
 
 public class WildernessService
 {
@@ -16,8 +16,6 @@ public class WildernessService
 
     public boolean isInWilderness()
     {
-        // RuneLite exposes the Wilderness level varbit. A positive value means the
-        // local player is currently in a Wilderness-enabled area.
-        return client.getVarbitValue(Varbits.IN_WILDERNESS) == 1;
+        return client.getVarbitValue(VarbitID.INSIDE_WILDERNESS) == 1;
     }
 }
