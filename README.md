@@ -1,23 +1,145 @@
 # PVP Activity
 
-Opt-in RuneLite PvP activity finder. Participating users anonymously publish their current world, Wilderness status, and combat-level bracket to a small aggregation service. The public panel shows aggregate activity only; RuneScape usernames and exact coordinates are not submitted.
+PVP Activity is an opt-in RuneLite plugin concept for helping PKers find active Wilderness worlds without publishing RuneScape usernames or exact coordinates.
 
-## Status
+Participating clients report only their own anonymous session state to a small aggregation API. The sidebar shows aggregate counts by world and broad combat-level bracket.
 
-Initial development build. This project is intended to be submitted to RuneLite for review before distribution.
+## V1 behavior
 
-## Privacy
+When the service is enabled, the plugin automatically reads the local player's:
 
-Sharing is disabled by default. When enabled, the plugin submits an anonymous session ID, world, Wilderness status, and combat-level bracket to the configured third-party API. The API does not require RuneScape usernames or exact player coordinates.
+- current world
+- Wilderness status
+- combat level, converted to a broad bracket
 
-## Layout
+The plugin sends:
 
-- RuneLite plugin: `src/main/java/com/pvpactivity`
-- Development launcher: `src/test/java/com/pvpactivity/PvpActivityPluginTest.java`
-- Aggregation backend: `server/server.js`
+- a random session ID generated for the current RuneLite run
+- world
+- whether the local player is in the Wilderness
+- combat bracket (`3-50`, `51-70`, `71-90`, `91-110`, `111-126`)
 
-## Development
+It does **not** send:
 
-Requires JDK 11. Run the development client with `./gradlew run` after the Gradle wrapper files are present.
+- RuneScape username
+- exact coordinates
+- equipment
+- prayer state
+- nearby-player information
+- information about non-participating players
 
-The backend can be started with Node.js using `node server/server.js`. It defaults to port `8080`.
+Only sessions currently reporting `inWilderness=true` are included in public activity totals.
+
+## Opt-in and privacy
+
+The third-party service is disabled by default. While disabled, the plugin does not contact the PVP Activity API.
+
+When enabled, the user's IP address is necessarily visible to the server while making HTTP requests. The application does not use IP addresses as player identifiers or include them in the activity API response. The included backend keeps only short-lived rate-limit state in memory and does not persist IP addresses to a database.
+
+Sessions expire automatically after 45 seconds without a heartbeat. Closing RuneLite, logging out, or disabling sharing also attempts to remove the session immediately.
+
+## Project layout
+
+```text
+.
+├── build.gradle
+├── runelite-plugin.properties
+├── src/
+│   ├── main/java/com/pvpactivity/
+│   │   ├── PvpActivityPlugin.java
+│   │   ├── PvpActivityConfig.java
+│   │   ├── PvpActivityPanel.java
+│   │   ├── PvpActivityApiClient.java
+│   │   ├── WildernessService.java
+│   │   └── model/
+│   └── test/java/com/pvpactivity/PvpActivityPluginTest.java
+├── server/
+│   ├── server.js
+│   ├── package.json
+│   └── Dockerfile
+└── .github/workflows/ci.yml
+```
+
+## RuneLite development
+
+Requirements:
+
+- JDK 11
+- Gradle 8.x (CI currently uses Gradle 8.10.2)
+
+Start the development RuneLite client:
+
+```bash
+gradle run
+```
+
+The Gradle project follows the current `runelite/example-plugin` structure and loads `PvpActivityPlugin` through `ExternalPluginManager` in developer mode.
+
+## Run the backend locally
+
+Requires Node.js 18 or newer. There are no third-party npm dependencies.
+
+```bash
+node server/server.js
+```
+
+The API listens on `http://127.0.0.1:8080` by default. The plugin's default API URL points there for local development.
+
+Environment variables:
+
+- `PORT` — API port, default `8080`
+- `SESSION_TTL_MS` — heartbeat expiry, default `45000`
+
+### Docker
+
+```bash
+docker build -t pvp-activity-api ./server
+docker run --rm -p 8080:8080 pvp-activity-api
+```
+
+## API
+
+### `POST /v1/heartbeat`
+
+Example:
+
+```json
+{
+  "sessionId": "11111111-1111-1111-1111-111111111111",
+  "world": 324,
+  "inWilderness": true,
+  "combatBracket": "71-90",
+  "timestamp": 0
+}
+```
+
+### `GET /v1/activity`
+
+Example response:
+
+```json
+{
+  "worlds": [
+    {
+      "world": 324,
+      "total": 3,
+      "brackets": {
+        "51-70": 1,
+        "71-90": 2
+      }
+    }
+  ]
+}
+```
+
+### `DELETE /v1/session/{sessionId}`
+
+Removes the anonymous session immediately.
+
+### `GET /health`
+
+Returns API health and current short-lived session count.
+
+## Review status
+
+This repository is an initial implementation intended to be submitted for RuneLite/Jagex review before public Plugin Hub distribution. If maintainers require changes to the PvP aggregation design, the implementation can be narrowed without changing the basic client/server structure.
