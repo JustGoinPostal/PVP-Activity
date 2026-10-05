@@ -11,8 +11,8 @@ public interface PvpActivityConfig extends Config
 
     @ConfigItem(
         keyName = "sharingEnabled",
-        name = "Share PvP activity",
-        description = "Opt in to the third-party PVP Activity service. When enabled, an anonymous session ID, world, Wilderness status and combat-level bracket are sent to the configured API. Your IP address is necessarily visible to the third-party server when connecting.",
+        name = "Enable service & share activity",
+        description = "Opt in to the third-party PVP Activity service. When enabled, the plugin connects to the configured API and sends an anonymous session ID, world, Wilderness status and combat-level bracket. Your IP address is necessarily visible to the third-party server while connected.",
         position = 0
     )
     default boolean sharingEnabled()
@@ -34,7 +34,7 @@ public interface PvpActivityConfig extends Config
     @ConfigItem(
         keyName = "refreshSeconds",
         name = "Refresh seconds",
-        description = "How often to refresh world activity",
+        description = "How often to refresh world activity while the service is enabled",
         position = 2
     )
     default int refreshSeconds()
