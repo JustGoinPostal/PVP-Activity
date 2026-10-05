@@ -126,6 +126,10 @@ public class PvpActivityPlugin extends Plugin
         {
             apiClient.removeSession(sessionId);
             serverConnected = false;
+            if (panel != null)
+            {
+                panel.showServiceDisabled();
+            }
         }
 
         lastHeartbeatAt = 0L;
@@ -158,9 +162,17 @@ public class PvpActivityPlugin extends Plugin
         final boolean inWilderness = wildernessService.isInWilderness();
         updatePanel(world, combat, inWilderness);
 
+        if (!config.sharingEnabled())
+        {
+            serverConnected = false;
+            panel.showServiceDisabled();
+            updatePanel(world, combat, inWilderness);
+            return;
+        }
+
         long now = System.currentTimeMillis();
 
-        if (config.sharingEnabled() && now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS)
+        if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS)
         {
             lastHeartbeatAt = now;
             HeartbeatRequest heartbeat = new HeartbeatRequest(
