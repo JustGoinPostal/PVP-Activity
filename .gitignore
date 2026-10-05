@@ -1,0 +1,8 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+.DS_Store
+server/node_modules/
+.env
