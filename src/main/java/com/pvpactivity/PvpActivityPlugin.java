@@ -88,29 +88,32 @@ public class PvpActivityPlugin extends Plugin
     @Subscribe
     public void onGameTick(GameTick event)
     {
-        if (!config.sharingEnabled())
+        final int world = client.getWorld();
+        final int combatLevel = getCombatLevel();
+        final boolean inWilderness = wildernessService.isInWilderness();
+        final boolean sharing = config.sharingEnabled();
+
+        if (!sharing)
         {
             serverConnected = false;
             if (panel != null)
             {
-                panel.setServerConnected(false);
-                panel.setLocalStatus(client.getWorld(), getCombatLevel(), wildernessService.isInWilderness(), false);
+                panel.updateLocalStatus(world, combatLevel, inWilderness, false, false);
+                panel.showServiceDisabled();
             }
             return;
         }
 
         long now = System.currentTimeMillis();
-        boolean inWilderness = wildernessService.isInWilderness();
-        int combatLevel = getCombatLevel();
 
         if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS)
         {
             lastHeartbeatAt = now;
             HeartbeatRequest request = new HeartbeatRequest(
                 sessionId,
-                client.getWorld(),
+                world,
                 inWilderness,
-                CombatBracket.fromCombatLevel(combatLevel),
+                CombatBracket.fromLevel(combatLevel),
                 now
             );
 
@@ -119,33 +122,20 @@ public class PvpActivityPlugin extends Plugin
                 serverConnected = connected;
                 if (panel != null)
                 {
-                    panel.setServerConnected(connected);
+                    panel.updateLocalStatus(world, combatLevel, inWilderness, true, connected);
                 }
             });
         }
 
-        if (now - lastActivityFetchAt >= config.refreshSeconds() * 1_000L)
+        if (now - lastActivityFetchAt >= Math.max(1, config.refreshSeconds()) * 1_000L)
         {
             lastActivityFetchAt = now;
-            apiClient.fetchActivity(activity ->
-            {
-                if (panel != null)
-                {
-                    panel.setActivity(activity);
-                }
-            }, connected ->
-            {
-                serverConnected = connected;
-                if (panel != null)
-                {
-                    panel.setServerConnected(connected);
-                }
-            });
+            fetchActivity(world, combatLevel, inWilderness);
         }
 
         if (panel != null)
         {
-            panel.setLocalStatus(client.getWorld(), combatLevel, inWilderness, true);
+            panel.updateLocalStatus(world, combatLevel, inWilderness, true, serverConnected);
         }
     }
 
@@ -172,17 +162,15 @@ public class PvpActivityPlugin extends Plugin
             return;
         }
 
-        if ("sharingEnabled".equals(event.getKey()))
+        if ("sharingEnabled".equals(event.getKey()) && !config.sharingEnabled())
         {
-            if (!config.sharingEnabled())
-            {
-                apiClient.removeSession(sessionId);
-                serverConnected = false;
-            }
-            lastHeartbeatAt = 0L;
-            lastActivityFetchAt = 0L;
-            refreshNow();
+            apiClient.removeSession(sessionId);
+            serverConnected = false;
         }
+
+        lastHeartbeatAt = 0L;
+        lastActivityFetchAt = 0L;
+        refreshNow();
     }
 
     private void refreshNow()
@@ -192,20 +180,40 @@ public class PvpActivityPlugin extends Plugin
             return;
         }
 
-        panel.setLocalStatus(client.getWorld(), getCombatLevel(), wildernessService.isInWilderness(), config.sharingEnabled());
-        panel.setServerConnected(serverConnected);
+        final int world = client.getWorld();
+        final int combatLevel = getCombatLevel();
+        final boolean inWilderness = wildernessService.isInWilderness();
+        final boolean sharing = config.sharingEnabled();
 
-        if (config.sharingEnabled())
+        panel.updateLocalStatus(world, combatLevel, inWilderness, sharing, serverConnected);
+
+        if (!sharing)
         {
-            apiClient.fetchActivity(panel::setActivity, connected ->
-            {
-                serverConnected = connected;
-                if (panel != null)
-                {
-                    panel.setServerConnected(connected);
-                }
-            });
+            panel.showServiceDisabled();
+            return;
         }
+
+        fetchActivity(world, combatLevel, inWilderness);
+    }
+
+    private void fetchActivity(int world, int combatLevel, boolean inWilderness)
+    {
+        apiClient.fetchActivity(worlds ->
+        {
+            serverConnected = true;
+            if (panel != null)
+            {
+                panel.updateActivity(worlds);
+                panel.updateLocalStatus(world, combatLevel, inWilderness, true, true);
+            }
+        }, () ->
+        {
+            serverConnected = false;
+            if (panel != null)
+            {
+                panel.updateLocalStatus(world, combatLevel, inWilderness, true, false);
+            }
+        });
     }
 
     private int getCombatLevel()
