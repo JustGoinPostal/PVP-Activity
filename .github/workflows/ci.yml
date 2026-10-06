@@ -17,7 +17,15 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Compile and test RuneLite plugin
-        run: gradle clean test
+        run: gradle clean test jar
+      - name: Upload sideload JAR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pvp-activity-plugin-${{ github.sha }}
+          path: build/libs/*.jar
+          retention-days: 14
+          if-no-files-found: error
 
   smoke-test-server:
     runs-on: ubuntu-latest
