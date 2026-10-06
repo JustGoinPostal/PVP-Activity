@@ -28,13 +28,17 @@ It does **not** send:
 - nearby-player information
 - information about non-participating players
 
-Only sessions currently reporting `inWilderness=true` are included in public activity totals.
+Only sessions currently reporting `inWilderness=true` are included in activity totals.
 
 ## Opt-in and privacy
 
-The third-party service is disabled by default. While disabled, the plugin does not contact the PVP Activity API.
+The third-party service is disabled by default. While disabled, the plugin does not contact the PVP Activity service and does not display aggregate activity.
 
-When enabled, the user's IP address is necessarily visible to the server while making HTTP requests. The application does not use IP addresses as player identifiers or include them in the activity API response. The included backend keeps only short-lived rate-limit state in memory and does not persist IP addresses to a database.
+Activity access is reciprocal: a client must have an active sharing session before the service returns the aggregate activity feed.
+
+When enabled, the user's IP address is necessarily visible to the server while making HTTPS requests. The application does not use IP addresses as player identifiers or include them in the activity API response. The included backend keeps only short-lived rate-limit state in memory and does not persist IP addresses to a database.
+
+The production service endpoint is fixed internally by the plugin and is not exposed as a RuneLite user setting.
 
 Sessions expire automatically after 45 seconds without a heartbeat. Closing RuneLite, logging out, or disabling sharing also attempts to remove the session immediately.
 
@@ -94,7 +98,7 @@ Requires Node.js 18 or newer. There are no third-party npm dependencies.
 node server/server.js
 ```
 
-The API listens on `http://127.0.0.1:8080` by default. The plugin's default API URL points there for local development.
+The API listens on `http://127.0.0.1:8080` by default. The production plugin does not expose a user-editable API URL.
 
 Environment variables:
 
@@ -126,22 +130,7 @@ Example:
 
 ### `GET /v1/activity`
 
-Example response:
-
-```json
-{
-  "worlds": [
-    {
-      "world": 324,
-      "total": 3,
-      "brackets": {
-        "51-70": 1,
-        "71-90": 2
-      }
-    }
-  ]
-}
-```
+Requires the caller's active sharing session ID in the `X-PVP-Session-ID` header.
 
 ### `DELETE /v1/session/{sessionId}`
 
