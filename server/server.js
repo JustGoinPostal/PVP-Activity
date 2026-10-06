@@ -1,6 +1,7 @@
 'use strict';
 
 const http = require('http');
+const net = require('net');
 const { URL } = require('url');
 
 const PORT = Number(process.env.PORT || 8080);
@@ -24,6 +25,10 @@ function json(res, status, body) {
 }
 
 function clientIp(req) {
+  const realIp = req.headers['x-real-ip'];
+  if (typeof realIp === 'string' && net.isIP(realIp)) {
+    return realIp;
+  }
   return req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : 'unknown';
 }
 
