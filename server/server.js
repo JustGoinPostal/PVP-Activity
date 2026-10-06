@@ -131,7 +131,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && url.pathname === '/v1/activity') {
-    json(res, 200, { generatedAt: Date.now(), worlds: aggregate() });
+    const worlds = aggregate();
+    const activeWildernessSessions = worlds.reduce((total, world) => total + world.total, 0);
+    json(res, 200, {
+      generatedAt: Date.now(),
+      activeSessions: sessions.size,
+      activeWildernessSessions,
+      worlds
+    });
     return;
   }
 
