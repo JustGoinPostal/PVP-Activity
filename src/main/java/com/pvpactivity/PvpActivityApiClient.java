@@ -20,17 +20,16 @@ import okhttp3.Response;
 public class PvpActivityApiClient
 {
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+    private static final String BASE_URL = "https://16.59.193.155";
 
     private final OkHttpClient httpClient;
     private final Gson gson;
-    private final PvpActivityConfig config;
 
     @Inject
-    PvpActivityApiClient(OkHttpClient httpClient, Gson gson, PvpActivityConfig config)
+    PvpActivityApiClient(OkHttpClient httpClient, Gson gson)
     {
         this.httpClient = httpClient;
         this.gson = gson;
-        this.config = config;
     }
 
     public void sendHeartbeat(HeartbeatRequest heartbeat, Consumer<Boolean> callback)
@@ -38,7 +37,7 @@ public class PvpActivityApiClient
         try
         {
             Request request = new Request.Builder()
-                .url(baseUrl() + "/v1/heartbeat")
+                .url(BASE_URL + "/v1/heartbeat")
                 .post(RequestBody.create(JSON, gson.toJson(heartbeat)))
                 .build();
 
@@ -71,7 +70,7 @@ public class PvpActivityApiClient
         try
         {
             Request request = new Request.Builder()
-                .url(baseUrl() + "/v1/activity")
+                .url(BASE_URL + "/v1/activity")
                 .header("X-PVP-Session-ID", sessionId)
                 .get()
                 .build();
@@ -116,7 +115,7 @@ public class PvpActivityApiClient
         try
         {
             Request request = new Request.Builder()
-                .url(baseUrl() + "/v1/session/" + sessionId)
+                .url(BASE_URL + "/v1/session/" + sessionId)
                 .delete()
                 .build();
             httpClient.newCall(request).enqueue(new Callback()
@@ -138,15 +137,5 @@ public class PvpActivityApiClient
         {
             // Best effort.
         }
-    }
-
-    private String baseUrl()
-    {
-        String url = config.apiUrl().trim();
-        while (url.endsWith("/"))
-        {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
     }
 }
