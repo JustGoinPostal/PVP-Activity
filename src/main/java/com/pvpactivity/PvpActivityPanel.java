@@ -63,7 +63,7 @@ public class PvpActivityPanel extends PluginPanel
         {
             worldValue.setText(world > 0 ? Integer.toString(world) : "-");
             combatValue.setText(combat > 0 ? Integer.toString(combat) : "-");
-            wildernessValue.setText(inWilderness ? "YES" : "NO");
+            wildernessValue.setText(world > 0 ? (inWilderness ? "YES" : "NO") : "-");
             sharingValue.setText(sharing ? "ON" : "OFF");
             serverValue.setText(!sharing ? "DISABLED" : (connected ? "CONNECTED" : "OFFLINE"));
         });
@@ -71,7 +71,17 @@ public class PvpActivityPanel extends PluginPanel
 
     public void showServiceDisabled()
     {
-        setActivityMessage("Enable the service in plugin settings to share and view activity.");
+        setActivityMessage("Enable sharing in plugin settings to share your own status and view activity.");
+    }
+
+    public void showLoginRequired()
+    {
+        setActivityMessage("Log in to begin sharing and view PVP activity.");
+    }
+
+    public void showConnecting()
+    {
+        setActivityMessage("Connecting to PVP Activity...");
     }
 
     public void updateActivity(List<WorldActivity> worlds)
@@ -82,7 +92,7 @@ public class PvpActivityPanel extends PluginPanel
 
             if (worlds == null || worlds.isEmpty())
             {
-                JLabel none = new JLabel("No opted-in PKers currently reported.");
+                JLabel none = new JLabel("No opted-in PKers currently reported in the Wilderness.");
                 none.setAlignmentX(LEFT_ALIGNMENT);
                 activityContainer.add(none);
             }
