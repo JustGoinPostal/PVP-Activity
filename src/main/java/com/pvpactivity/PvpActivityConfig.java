@@ -28,7 +28,7 @@ public interface PvpActivityConfig extends Config
     )
     default String apiUrl()
     {
-        return "http://127.0.0.1:8080";
+        return "http://16.59.193.155:8080";
     }
 
     @ConfigItem(
