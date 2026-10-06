@@ -26,7 +26,8 @@ import net.runelite.client.ui.NavigationButton;
 @PluginDescriptor(
     name = "PVP Activity",
     description = "Opt-in anonymous Wilderness activity finder for PKers",
-    tags = {"pvp", "pking", "wilderness", "worlds"}
+    tags = {"pvp", "pking", "wilderness", "worlds"},
+    warning = "This plugin connects to a third-party server not controlled or verified by RuneLite. If sharing is enabled, it sends an anonymous session ID, your current world, Wilderness status and combat-level bracket. Your IP address is visible to the server as part of the network connection."
 )
 public class PvpActivityPlugin extends Plugin
 {
@@ -79,11 +80,7 @@ public class PvpActivityPlugin extends Plugin
             apiClient.removeSession(sessionId);
         }
 
-        if (navButton != null)
-        {
-            clientToolbar.removeNavigation(navButton);
-        }
-
+        clientToolbar.removeNavigation(navButton);
         panel = null;
         navButton = null;
         serverConnected = false;
@@ -92,25 +89,79 @@ public class PvpActivityPlugin extends Plugin
     @Subscribe
     public void onGameTick(GameTick event)
     {
-        refreshNow();
+        if (!config.sharingEnabled())
+        {
+            serverConnected = false;
+            if (panel != null)
+            {
+                panel.setServerConnected(false);
+                panel.setLocalStatus(client.getWorld(), getCombatLevel(), wildernessService.isInWilderness(), false);
+            }
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        boolean inWilderness = wildernessService.isInWilderness();
+        int combatLevel = getCombatLevel();
+
+        if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS)
+        {
+            lastHeartbeatAt = now;
+            HeartbeatRequest request = new HeartbeatRequest(
+                sessionId,
+                client.getWorld(),
+                inWilderness,
+                CombatBracket.fromCombatLevel(combatLevel),
+                now
+            );
+
+            apiClient.sendHeartbeat(request, connected ->
+            {
+                serverConnected = connected;
+                if (panel != null)
+                {
+                    panel.setServerConnected(connected);
+                }
+            });
+        }
+
+        if (now - lastActivityFetchAt >= config.refreshSeconds() * 1_000L)
+        {
+            lastActivityFetchAt = now;
+            apiClient.fetchActivity(activity ->
+            {
+                if (panel != null)
+                {
+                    panel.setActivity(activity);
+                }
+            }, connected ->
+            {
+                serverConnected = connected;
+                if (panel != null)
+                {
+                    panel.setServerConnected(connected);
+                }
+            });
+        }
+
+        if (panel != null)
+        {
+            panel.setLocalStatus(client.getWorld(), combatLevel, inWilderness, true);
+        }
     }
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
-        if (event.getGameState() != GameState.LOGGED_IN)
+        if (event.getGameState() == GameState.LOGIN_SCREEN || event.getGameState() == GameState.HOPPING)
         {
             if (config.sharingEnabled())
             {
                 apiClient.removeSession(sessionId);
             }
             serverConnected = false;
-            updatePanel(0, 0, false);
-        }
-        else
-        {
             lastHeartbeatAt = 0L;
-            refreshNow();
+            lastActivityFetchAt = 0L;
         }
     }
 
@@ -122,19 +173,17 @@ public class PvpActivityPlugin extends Plugin
             return;
         }
 
-        if ("sharingEnabled".equals(event.getKey()) && !config.sharingEnabled())
+        if ("sharingEnabled".equals(event.getKey()))
         {
-            apiClient.removeSession(sessionId);
-            serverConnected = false;
-            if (panel != null)
+            if (!config.sharingEnabled())
             {
-                panel.showServiceDisabled();
+                apiClient.removeSession(sessionId);
+                serverConnected = false;
             }
+            lastHeartbeatAt = 0L;
+            lastActivityFetchAt = 0L;
+            refreshNow();
         }
-
-        lastHeartbeatAt = 0L;
-        lastActivityFetchAt = 0L;
-        refreshNow();
     }
 
     private void refreshNow()
@@ -144,107 +193,52 @@ public class PvpActivityPlugin extends Plugin
             return;
         }
 
-        if (client.getGameState() != GameState.LOGGED_IN)
+        panel.setLocalStatus(client.getWorld(), getCombatLevel(), wildernessService.isInWilderness(), config.sharingEnabled());
+        panel.setServerConnected(serverConnected);
+
+        if (config.sharingEnabled())
         {
-            updatePanel(0, 0, false);
-            return;
-        }
-
-        Player localPlayer = client.getLocalPlayer();
-        if (localPlayer == null)
-        {
-            updatePanel(client.getWorld(), 0, false);
-            return;
-        }
-
-        final int world = client.getWorld();
-        final int combat = localPlayer.getCombatLevel();
-        final boolean inWilderness = wildernessService.isInWilderness();
-        updatePanel(world, combat, inWilderness);
-
-        if (!config.sharingEnabled())
-        {
-            serverConnected = false;
-            panel.showServiceDisabled();
-            updatePanel(world, combat, inWilderness);
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-
-        if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS)
-        {
-            lastHeartbeatAt = now;
-            HeartbeatRequest heartbeat = new HeartbeatRequest(
-                sessionId,
-                world,
-                inWilderness,
-                CombatBracket.fromLevel(combat).getKey(),
-                now
-            );
-            apiClient.sendHeartbeat(heartbeat, connected ->
+            apiClient.fetchActivity(panel::setActivity, connected ->
             {
                 serverConnected = connected;
-                updatePanel(world, combat, inWilderness);
+                if (panel != null)
+                {
+                    panel.setServerConnected(connected);
+                }
             });
         }
-
-        long refreshMs = Math.max(3, Math.min(60, config.refreshSeconds())) * 1000L;
-        if (now - lastActivityFetchAt >= refreshMs)
-        {
-            lastActivityFetchAt = now;
-            apiClient.fetchActivity(
-                worlds ->
-                {
-                    serverConnected = true;
-                    if (panel != null)
-                    {
-                        panel.updateActivity(worlds);
-                    }
-                    updatePanel(world, combat, inWilderness);
-                },
-                () ->
-                {
-                    serverConnected = false;
-                    updatePanel(world, combat, inWilderness);
-                }
-            );
-        }
     }
 
-    private void updatePanel(int world, int combat, boolean inWilderness)
+    private int getCombatLevel()
     {
-        PvpActivityPanel currentPanel = panel;
-        if (currentPanel != null)
-        {
-            currentPanel.updateLocalStatus(world, combat, inWilderness, config.sharingEnabled(), serverConnected);
-        }
-    }
-
-    private static BufferedImage createIcon()
-    {
-        BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D graphics = image.createGraphics();
-        try
-        {
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            graphics.setColor(Color.WHITE);
-            graphics.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            graphics.drawLine(3, 3, 13, 13);
-            graphics.drawLine(13, 3, 3, 13);
-            graphics.drawLine(2, 5, 5, 2);
-            graphics.drawLine(11, 2, 14, 5);
-        }
-        finally
-        {
-            graphics.dispose();
-        }
-        return image;
+        Player localPlayer = client.getLocalPlayer();
+        return localPlayer == null ? 0 : localPlayer.getCombatLevel();
     }
 
     @Provides
     PvpActivityConfig provideConfig(ConfigManager configManager)
     {
         return configManager.getConfig(PvpActivityConfig.class);
+    }
+
+    private BufferedImage createIcon()
+    {
+        BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = image.createGraphics();
+        try
+        {
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setColor(new Color(190, 45, 45));
+            g.fillOval(2, 2, 12, 12);
+            g.setColor(Color.WHITE);
+            g.setStroke(new BasicStroke(2f));
+            g.drawLine(5, 8, 11, 8);
+            g.drawLine(8, 5, 8, 11);
+        }
+        finally
+        {
+            g.dispose();
+        }
+        return image;
     }
 }
