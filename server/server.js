@@ -116,6 +116,12 @@ function aggregate() {
     .sort((a, b) => b.total - a.total || a.world - b.world);
 }
 
+function hasActiveSharingSession(req) {
+  cleanExpired();
+  const sessionId = req.headers['x-pvp-session-id'];
+  return validSessionId(sessionId) && sessions.has(sessionId);
+}
+
 const server = http.createServer(async (req, res) => {
   if (!allowed(req)) {
     json(res, 429, { error: 'rate limit exceeded' });
@@ -131,14 +137,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && url.pathname === '/v1/activity') {
-    const worlds = aggregate();
-    const activeWildernessSessions = worlds.reduce((total, world) => total + world.total, 0);
-    json(res, 200, {
-      generatedAt: Date.now(),
-      activeSessions: sessions.size,
-      activeWildernessSessions,
-      worlds
-    });
+    if (!hasActiveSharingSession(req)) {
+      json(res, 403, { error: 'active sharing session required' });
+      return;
+    }
+    json(res, 200, { generatedAt: Date.now(), worlds: aggregate() });
     return;
   }
 
