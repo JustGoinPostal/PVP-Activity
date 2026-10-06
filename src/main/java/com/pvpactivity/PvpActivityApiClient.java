@@ -35,87 +35,109 @@ public class PvpActivityApiClient
 
     public void sendHeartbeat(HeartbeatRequest heartbeat, Consumer<Boolean> callback)
     {
-        Request request = new Request.Builder()
-            .url(baseUrl() + "/v1/heartbeat")
-            .post(RequestBody.create(JSON, gson.toJson(heartbeat)))
-            .build();
-
-        httpClient.newCall(request).enqueue(new Callback()
+        try
         {
-            @Override
-            public void onFailure(Call call, IOException e)
-            {
-                callback.accept(false);
-            }
+            Request request = new Request.Builder()
+                .url(baseUrl() + "/v1/heartbeat")
+                .post(RequestBody.create(JSON, gson.toJson(heartbeat)))
+                .build();
 
-            @Override
-            public void onResponse(Call call, Response response)
+            httpClient.newCall(request).enqueue(new Callback()
             {
-                try (Response ignored = response)
+                @Override
+                public void onFailure(Call call, IOException e)
                 {
-                    callback.accept(response.isSuccessful());
+                    callback.accept(false);
                 }
-            }
-        });
+
+                @Override
+                public void onResponse(Call call, Response response)
+                {
+                    try (Response ignored = response)
+                    {
+                        callback.accept(response.isSuccessful());
+                    }
+                }
+            });
+        }
+        catch (RuntimeException ex)
+        {
+            callback.accept(false);
+        }
     }
 
-    public void fetchActivity(Consumer<List<WorldActivity>> success, Runnable failure)
+    public void fetchActivity(String sessionId, Consumer<List<WorldActivity>> success, Runnable failure)
     {
-        Request request = new Request.Builder()
-            .url(baseUrl() + "/v1/activity")
-            .get()
-            .build();
-
-        httpClient.newCall(request).enqueue(new Callback()
+        try
         {
-            @Override
-            public void onFailure(Call call, IOException e)
-            {
-                failure.run();
-            }
+            Request request = new Request.Builder()
+                .url(baseUrl() + "/v1/activity")
+                .header("X-PVP-Session-ID", sessionId)
+                .get()
+                .build();
 
-            @Override
-            public void onResponse(Call call, Response response) throws IOException
+            httpClient.newCall(request).enqueue(new Callback()
             {
-                try (Response ignored = response)
-                {
-                    if (!response.isSuccessful() || response.body() == null)
-                    {
-                        failure.run();
-                        return;
-                    }
-
-                    ActivityResponse parsed = gson.fromJson(response.body().charStream(), ActivityResponse.class);
-                    success.accept(parsed == null ? Collections.emptyList() : parsed.getWorlds());
-                }
-                catch (RuntimeException ex)
+                @Override
+                public void onFailure(Call call, IOException e)
                 {
                     failure.run();
                 }
-            }
-        });
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException
+                {
+                    try (Response ignored = response)
+                    {
+                        if (!response.isSuccessful() || response.body() == null)
+                        {
+                            failure.run();
+                            return;
+                        }
+
+                        ActivityResponse parsed = gson.fromJson(response.body().charStream(), ActivityResponse.class);
+                        success.accept(parsed == null ? Collections.emptyList() : parsed.getWorlds());
+                    }
+                    catch (RuntimeException ex)
+                    {
+                        failure.run();
+                    }
+                }
+            });
+        }
+        catch (RuntimeException ex)
+        {
+            failure.run();
+        }
     }
 
     public void removeSession(String sessionId)
     {
-        Request request = new Request.Builder()
-            .url(baseUrl() + "/v1/session/" + sessionId)
-            .delete()
-            .build();
-        httpClient.newCall(request).enqueue(new Callback()
+        try
         {
-            @Override
-            public void onFailure(Call call, IOException e)
+            Request request = new Request.Builder()
+                .url(baseUrl() + "/v1/session/" + sessionId)
+                .delete()
+                .build();
+            httpClient.newCall(request).enqueue(new Callback()
             {
-                // Best effort. The server TTL also removes stale sessions.
-            }
+                @Override
+                public void onFailure(Call call, IOException e)
+                {
+                    // Best effort. The server TTL also removes stale sessions.
+                }
 
-            @Override
-            public void onResponse(Call call, Response response)
-            {
-                response.close();
-            }
-        });
+                @Override
+                public void onResponse(Call call, Response response)
+                {
+                    response.close();
+                }
+            });
+        }
+        catch (RuntimeException ignored)
+        {
+            // Best effort.
+        }
     }
 
     private String baseUrl()
