@@ -1,0 +1,22 @@
+name: Container CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/container-ci.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - ".github/workflows/container-ci.yml"
+
+jobs:
+  build-container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build PVP Activity API image
+        run: docker build -f server/Dockerfile -t pvp-activity:ci server
