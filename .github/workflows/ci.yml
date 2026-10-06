@@ -42,10 +42,12 @@ jobs:
         run: |
           sleep 1
           curl --fail http://127.0.0.1:8080/health
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/activity)" = "403"
           curl --fail -X POST http://127.0.0.1:8080/v1/heartbeat \
             -H 'Content-Type: application/json' \
             -d '{"sessionId":"11111111-1111-1111-1111-111111111111","world":324,"inWilderness":true,"combatBracket":"71-90","timestamp":0}'
-          curl --fail http://127.0.0.1:8080/v1/activity | grep '"world":324'
+          curl --fail http://127.0.0.1:8080/v1/activity \
+            -H 'X-PVP-Session-ID: 11111111-1111-1111-1111-111111111111' | grep '"world":324'
           curl --fail -X DELETE http://127.0.0.1:8080/v1/session/11111111-1111-1111-1111-111111111111
       - name: Print server log on failure
         if: failure()
