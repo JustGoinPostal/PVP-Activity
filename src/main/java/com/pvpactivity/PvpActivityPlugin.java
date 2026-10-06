@@ -26,8 +26,7 @@ import net.runelite.client.ui.NavigationButton;
 @PluginDescriptor(
     name = "PVP Activity",
     description = "Opt-in anonymous Wilderness activity finder for PKers",
-    tags = {"pvp", "pking", "wilderness", "worlds"},
-    warning = "This plugin connects to a third-party server not controlled or verified by RuneLite. If sharing is enabled, it sends an anonymous session ID, your current world, Wilderness status and combat-level bracket. Your IP address is visible to the server as part of the network connection."
+    tags = {"pvp", "pking", "wilderness", "worlds"}
 )
 public class PvpActivityPlugin extends Plugin
 {
