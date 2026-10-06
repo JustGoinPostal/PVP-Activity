@@ -113,7 +113,7 @@ public class PvpActivityPlugin extends Plugin
                 sessionId,
                 world,
                 inWilderness,
-                CombatBracket.fromLevel(combatLevel),
+                CombatBracket.fromLevel(combatLevel).getKey(),
                 now
             );
 
