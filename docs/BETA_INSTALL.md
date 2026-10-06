@@ -8,7 +8,8 @@ PVP Activity is currently distributed as a **sideloaded RuneLite beta plugin**. 
 - Sharing is **OFF by default**.
 - When you opt in, the plugin sends an anonymous session ID, your current world, whether you are in the Wilderness, and your combat-level bracket to the PVP Activity server.
 - Your IP address is visible to the server as part of the network connection.
-- The hosted API uses HTTPS.
+- The hosted service uses HTTPS.
+- The service endpoint is managed internally by the plugin and is not configurable by users.
 - Sideloading the plugin does not mean RuneLite or Jagex has approved the plugin or its features.
 
 ## RuneLite sideload requirement
@@ -41,11 +42,13 @@ Once RuneLite is running in developer mode and the JAR is in the sideload direct
 
 ## Using PVP Activity
 
-1. Open PVP Activity settings.
-2. Confirm the API URL is `https://16.59.193.155`.
-3. Turn on **Enable service & share activity** only if you want to participate.
+1. Log into Old School RuneScape.
+2. Open PVP Activity settings.
+3. Turn on **Enable service & share activity** if you want to participate.
 4. Open the PVP Activity sidebar panel.
-5. The panel will show your world, combat level, Wilderness status, sharing status, server status, and aggregated opted-in Wilderness activity by world/combat bracket.
+5. While you have an active sharing session, the panel shows your world, combat level, Wilderness status, sharing status, server status, and aggregated opted-in Wilderness activity by world/combat bracket.
+
+Activity access is reciprocal: if you are not actively sharing, the service does not return the aggregate activity feed to your client.
 
 ## Privacy behavior
 
